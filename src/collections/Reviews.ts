@@ -12,10 +12,25 @@ export const Reviews: CollectionConfig = {
       required: true,
     },
     {
+      name: 'description',
+      type: 'textarea',
+      required: true,
+    },
+    {
       name: 'slug',
       type: 'text',
       required: true,
       unique: true,
+      admin: {
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'category',
+      type: 'relationship',
+      relationTo: 'categories',
+      hasMany: true,
+      required: true,
       admin: {
         position: 'sidebar',
       },
