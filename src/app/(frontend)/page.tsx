@@ -1,30 +1,26 @@
+import { getPayload } from 'payload'
+import config from '@payload-config'
+import Link from "next/link";
 import Image from "next/image";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ReviewCard } from "@/components/ReviewCard";
 import { Utensils } from "lucide-react";
 
-export default function Home() {
-  const reviews = [
-    {
-      title: "Céline and Lolo",
-      description: "Are we still saying happy new year? 😂 or counting to Valentine's Day? Whatever the case, it's 2026 and Céline & Lolo is our 1st review of what I believe will be a great foodie year ahead! Céline & Lolo is located on Kabarsiran drive, and it actually used to be a very stunning white mansion before they turned it into an equally stunning boutique hotel. First things first - DO NOT drive here.",
-      image: "https://images.unsplash.com/photo-1514362545857-3bc16549766b?w=800&q=80",
-      slug: "celine-and-lolo"
-    },
-    {
-      title: "Biscotti Cafe",
-      description: "If you've seen the video of the cheesecake with syrup being poured all over it then you know about Biscotti Cafe. Located in the Westlands Eatery Strip Mall, Biscotti Cafe is a cute little cafe that is very inviting from aesthetics alone. With a light airy colour scheme of whites, pinks and light greys, entering Biscotti feels like stepping into a cloud.",
-      image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&q=80",
-      slug: "biscotti-cafe"
-    },
-    {
-      title: "Cuban Code",
-      description: "A new joint that's giving Instagram girlies a run for their money is Cuban Code, a restaurant + cigar lounge located on Muthangari Road. I really have to say though for a restaurant this fancy, why don't they have signage on the road? I really thought Google maps had failed me because it leads you to this big office block called African Guarantee Fund - a building that looks VERY closed on weekends.",
-      image: "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=800&q=80",
-      slug: "cuban-code"
-    }
-  ];
+export default async function Home() {
+  const payload = await getPayload({ config })
+  const reviewsData = await payload.find({
+    collection: 'reviews',
+    limit: 3,
+    sort: '-publishedDate', // Assuming we want the latest
+  })
+
+  const reviews = reviewsData.docs.map((review: any) => ({
+    title: review.title,
+    description: review.description,
+    image: typeof review.coverImage === 'object' ? review.coverImage?.url : review.coverImage,
+    slug: review.slug
+  }));
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-[#F8F9FA]">
@@ -86,16 +82,9 @@ export default function Home() {
           </div>
 
           <div className="mt-16 text-center">
-            <h3 className="text-xl font-bold mb-8">More</h3>
-            <div className="flex flex-wrap justify-center gap-4 text-xs text-gray-500 mb-8">
-              <a href="#" className="hover:text-black">Birdy's Chicken & Chips</a>
-              <a href="#" className="hover:text-black">The Pot Rally</a>
-              <a href="#" className="hover:text-black">Bang Bang Thai</a>
-              <a href="#" className="hover:text-black">Cafe Concerto</a>
-            </div>
-            <button className="px-6 py-3 bg-gray-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-black transition-colors rounded-sm">
+            <Link href="/reviews" className="inline-block px-6 py-3 bg-gray-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-black transition-colors rounded-sm">
               All Reviews
-            </button>
+            </Link>
           </div>
         </div>
       </section>
