@@ -10,6 +10,16 @@ import type { ElementType } from "react"
 import { Star, MapPin, DollarSign, Info, Twitter, Tag } from "lucide-react"
 import { resolveMediaUrl } from "@/lib/media"
 
+type RichTextNode = {
+  type?: string
+  tag?: string
+  format?: string
+  text?: string
+  relationTo?: string
+  value?: unknown
+  children?: RichTextNode[]
+}
+
 type Props = {
   params: Promise<{
     slug: string
@@ -64,18 +74,65 @@ export default async function ReviewPage({ params }: Props) {
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(review.location.name)}`
         : null
 
-  const renderContent = (content: any) => {
-    if (!content?.root?.children) return null;
-    return content.root.children.map((node: any, i: number) => {
+  const extractText = (children?: RichTextNode[]): string => {
+    if (!children?.length) return ''
+    return children
+      .map((child) => {
+        if (typeof child.text === 'string') return child.text
+        if (child.children?.length) return extractText(child.children)
+        return ''
+      })
+      .join('')
+  }
+
+  const getUploadNodeMedia = (node: RichTextNode): unknown => {
+    const value = node.value
+    if (value && typeof value === 'object') {
+      const uploadValue = value as { value?: unknown; url?: string; filename?: string }
+      if (uploadValue.value) return uploadValue.value
+      if (uploadValue.url || uploadValue.filename) return uploadValue
+    }
+
+    return value
+  }
+
+  const renderContent = (content: { root?: { children?: RichTextNode[] } } | null | undefined) => {
+    if (!content?.root?.children) return null
+
+    return content.root.children.map((node, i) => {
       if (node.type === 'paragraph') {
-         return <p key={i}>{node.children?.map((c: any) => c.text).join('')}</p>
+        return <p key={i}>{extractText(node.children)}</p>
       }
+
       if (node.type === 'heading') {
-         const headingTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(node.tag) ? node.tag : 'h2'
-         const HeadingTag = headingTag as ElementType
-         return <HeadingTag key={i} className="font-bold my-4">{node.children?.map((c: any) => c.text).join('')}</HeadingTag>
+        const headingTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(node.tag ?? '') ? node.tag : 'h2'
+        const HeadingTag = headingTag as ElementType
+        return (
+          <HeadingTag key={i} className="font-bold my-4">
+            {extractText(node.children)}
+          </HeadingTag>
+        )
       }
-      return null;
+
+      if (node.type === 'upload' && node.relationTo === 'media') {
+        const media = getUploadNodeMedia(node)
+        const imageUrl = resolveMediaUrl(media as Parameters<typeof resolveMediaUrl>[0])
+        if (!imageUrl) return null
+
+        return (
+          <figure key={i} className="relative my-8 overflow-hidden rounded-sm border border-gray-100 bg-gray-100">
+            <Image
+              src={imageUrl}
+              alt={extractText(node.children) || review.title}
+              width={1200}
+              height={800}
+              className="h-auto w-full object-cover"
+            />
+          </figure>
+        )
+      }
+
+      return null
     })
   }
 
