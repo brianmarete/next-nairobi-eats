@@ -1,4 +1,6 @@
 import type { CollectionConfig } from 'payload'
+import { lexicalEditor, BlocksFeature } from '@payloadcms/richtext-lexical'
+import { ContentGallery } from '@/blocks/ContentGallery'
 
 export const Reviews: CollectionConfig = {
   slug: 'reviews',
@@ -136,6 +138,14 @@ export const Reviews: CollectionConfig = {
     {
       name: 'content',
       type: 'richText',
+      editor: lexicalEditor({
+        features: ({ defaultFeatures }) => [
+          ...defaultFeatures,
+          BlocksFeature({
+            blocks: [ContentGallery],
+          }),
+        ],
+      }),
     },
     {
         name: 'gallery',

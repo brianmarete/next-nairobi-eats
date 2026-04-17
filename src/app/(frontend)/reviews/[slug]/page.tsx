@@ -9,6 +9,7 @@ import Image from "next/image"
 import type { ElementType } from "react"
 import { Star, MapPin, DollarSign, Info, Twitter, Tag } from "lucide-react"
 import { resolveMediaUrl } from "@/lib/media"
+import { InlineGalleryBlock } from "@/components/content/InlineGalleryBlock"
 
 type RichTextNode = {
   type?: string
@@ -17,6 +18,14 @@ type RichTextNode = {
   text?: string
   relationTo?: string
   value?: unknown
+  fields?: {
+    blockType?: string
+    caption?: string
+    images?: Array<{
+      image?: unknown
+      alt?: string
+    }>
+  }
   children?: RichTextNode[]
 }
 
@@ -130,6 +139,23 @@ export default async function ReviewPage({ params }: Props) {
             />
           </figure>
         )
+      }
+
+      if (node.type === 'block' && node.fields?.blockType === 'contentGallery') {
+        const images = (node.fields.images ?? [])
+          .map((galleryItem) => {
+            const imageUrl = resolveMediaUrl(galleryItem.image as Parameters<typeof resolveMediaUrl>[0])
+            if (!imageUrl) return null
+            return {
+              url: imageUrl,
+              alt: galleryItem.alt || review.title,
+            }
+          })
+          .filter((item): item is { url: string; alt: string } => Boolean(item))
+
+        if (!images.length) return null
+
+        return <InlineGalleryBlock key={i} images={images} caption={node.fields.caption} />
       }
 
       return null
