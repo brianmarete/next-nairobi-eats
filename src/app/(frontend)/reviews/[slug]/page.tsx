@@ -6,7 +6,9 @@ import { GoogleMapsEmbed } from '@next/third-parties/google'
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import Image from "next/image"
+import type { ElementType } from "react"
 import { Star, MapPin, DollarSign, Info, Twitter, Tag } from "lucide-react"
+import { resolveMediaUrl } from "@/lib/media"
 
 type Props = {
   params: Promise<{
@@ -49,14 +51,8 @@ export default async function ReviewPage({ params }: Props) {
     );
   };
 
-  const getImageUrl = (image: any) => {
-    if (!image) return null
-    if (typeof image === 'string') return image
-    return image.url
-  }
-
-  const coverImageUrl = getImageUrl(review.coverImage)
-  const heroImageUrl = getImageUrl(review.heroImage) || coverImageUrl
+  const coverImageUrl = resolveMediaUrl(review.coverImage)
+  const heroImageUrl = resolveMediaUrl(review.heroImage) || coverImageUrl
 
   const mapQuery = review.location?.placeId
     ? `place_id:${review.location.placeId}`
@@ -75,8 +71,9 @@ export default async function ReviewPage({ params }: Props) {
          return <p key={i}>{node.children?.map((c: any) => c.text).join('')}</p>
       }
       if (node.type === 'heading') {
-         const Tag = node.tag as keyof JSX.IntrinsicElements || 'h2';
-         return <Tag key={i} className="font-bold my-4">{node.children?.map((c: any) => c.text).join('')}</Tag>
+         const headingTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(node.tag) ? node.tag : 'h2'
+         const HeadingTag = headingTag as ElementType
+         return <HeadingTag key={i} className="font-bold my-4">{node.children?.map((c: any) => c.text).join('')}</HeadingTag>
       }
       return null;
     })
@@ -145,7 +142,18 @@ export default async function ReviewPage({ params }: Props) {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mt-8">
                     {review.gallery.map((item: any, i: number) => (
                         <div key={i} className="relative aspect-square bg-gray-100 rounded-sm overflow-hidden">
-                            <Image src={getImageUrl(item.image)} alt={item.caption || "Gallery image"} fill className="object-cover" />
+                            {(() => {
+                              const imageUrl = resolveMediaUrl(item.image)
+                              if (!imageUrl) return null
+                              return (
+                                <Image
+                                  src={imageUrl}
+                                  alt={item.caption || "Gallery image"}
+                                  fill
+                                  className="object-cover"
+                                />
+                              )
+                            })()}
                         </div>
                     ))}
                 </div>
@@ -188,7 +196,18 @@ export default async function ReviewPage({ params }: Props) {
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                        {review.menu.map((item: any, i: number) => (
                            <div key={i} className="relative aspect-[3/4] bg-gray-100 border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
-                               <Image src={getImageUrl(item.image)} alt="Menu Page" fill className="object-cover" />
+                               {(() => {
+                                 const imageUrl = resolveMediaUrl(item.image)
+                                 if (!imageUrl) return null
+                                 return (
+                                   <Image
+                                     src={imageUrl}
+                                     alt="Menu Page"
+                                     fill
+                                     className="object-cover"
+                                   />
+                                 )
+                               })()}
                            </div>
                        ))}
                    </div>

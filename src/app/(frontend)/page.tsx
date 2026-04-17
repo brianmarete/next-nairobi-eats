@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ReviewCard } from "@/components/ReviewCard";
 import { Utensils } from "lucide-react";
+import { resolveMediaUrl } from "@/lib/media";
 
 export default async function Home() {
   const payload = await getPayload({ config })
@@ -13,12 +14,13 @@ export default async function Home() {
     collection: 'reviews',
     limit: 3,
     sort: '-publishedDate', // Assuming we want the latest
+    depth: 1,
   })
 
   const reviews = reviewsData.docs.map((review: any) => ({
     title: review.title,
     description: review.description,
-    image: typeof review.coverImage === 'object' ? review.coverImage?.url : review.coverImage,
+    image: resolveMediaUrl(review.coverImage),
     slug: review.slug
   }));
 

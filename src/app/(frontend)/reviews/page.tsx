@@ -3,6 +3,7 @@ import config from '@payload-config'
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ReviewGridCard } from "@/components/ReviewGridCard";
+import { resolveMediaUrl } from "@/lib/media";
 
 export default async function ReviewsPage() {
   const payload = await getPayload({ config })
@@ -10,6 +11,7 @@ export default async function ReviewsPage() {
     collection: 'reviews',
     limit: 12,
     sort: '-publishedDate',
+    depth: 1,
   })
 
   return (
@@ -29,7 +31,7 @@ export default async function ReviewsPage() {
                <ReviewGridCard
                 title={review.title}
                 description={review.description}
-                image={typeof review.coverImage === 'object' ? review.coverImage?.url : review.coverImage}
+                image={resolveMediaUrl(review.coverImage)}
                 slug={review.slug}
               />
             </div>

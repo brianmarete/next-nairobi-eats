@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { ReviewGridCard } from "@/components/ReviewGridCard"
+import { resolveMediaUrl } from "@/lib/media"
 
 type Props = {
   params: Promise<{
@@ -60,7 +61,7 @@ export default async function CategoryPage({ params }: Props) {
                <ReviewGridCard
                 title={review.title}
                 description={review.description}
-                image={typeof review.coverImage === 'object' ? review.coverImage?.url : review.coverImage}
+                image={resolveMediaUrl(review.coverImage)}
                 slug={review.slug}
               />
             </div>

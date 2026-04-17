@@ -4,7 +4,7 @@ import Link from 'next/link';
 interface ReviewCardProps {
   title: string;
   description: string;
-  image: string;
+  image: string | null;
   slug: string;
 }
 
