@@ -68,15 +68,16 @@ export const Reviews: CollectionConfig = {
           label: 'Location Name',
         },
         {
-          name: 'coordinates',
-          type: 'point',
-          label: 'Coordinates (Lat, Lng)',
+          name: 'placeId',
+          type: 'text',
+          label: 'Restaurant Location',
+          admin: {
+            components: {
+              Field: '@/fields/LocationPicker#LocationPickerField',
+            },
+            description: 'Search for a place and save its Google place_id.',
+          },
         },
-        {
-            name: 'googleMapsUrl',
-            type: 'text',
-            label: 'Google Maps Link'
-        }
       ]
     },
     {

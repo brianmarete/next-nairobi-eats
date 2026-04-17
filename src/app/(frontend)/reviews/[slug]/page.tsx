@@ -2,6 +2,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { GoogleMapsEmbed } from '@next/third-parties/google'
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import Image from "next/image"
@@ -14,9 +15,11 @@ type Props = {
 }
 
 export default async function ReviewPage({ params }: Props) {
+  const MAP_DEFAULT_ZOOM = '17'
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   const { slug } = await params
   const payload = await getPayload({ config })
-  
+
   const result = await payload.find({
     collection: 'reviews',
     where: {
@@ -37,9 +40,9 @@ export default async function ReviewPage({ params }: Props) {
     return (
       <div className="flex text-yellow-500">
         {[1, 2, 3, 4, 5].map((star) => (
-          <Star 
-            key={star} 
-            className={`w-4 h-4 ${star <= rating ? "fill-current" : "text-gray-300"}`} 
+          <Star
+            key={star}
+            className={`w-4 h-4 ${star <= rating ? "fill-current" : "text-gray-300"}`}
           />
         ))}
       </div>
@@ -54,6 +57,16 @@ export default async function ReviewPage({ params }: Props) {
 
   const coverImageUrl = getImageUrl(review.coverImage)
   const heroImageUrl = getImageUrl(review.heroImage) || coverImageUrl
+
+  const mapQuery = review.location?.placeId
+    ? `place_id:${review.location.placeId}`
+    : review.location?.name || null
+  const mapsOpenUrl =
+    review.location?.placeId
+      ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(review.location.placeId)}`
+      : review.location?.name
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(review.location.name)}`
+        : null
 
   const renderContent = (content: any) => {
     if (!content?.root?.children) return null;
@@ -97,14 +110,14 @@ export default async function ReviewPage({ params }: Props) {
 
       <main className="container mx-auto max-w-5xl px-6 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          
+
           {/* Main Content Column */}
           <div className="lg:col-span-8 space-y-8">
-            
+
             {/* Review Header Info */}
             <div className="mb-8 border-b border-gray-100 pb-8">
                 <span className="text-xs font-bold tracking-widest uppercase text-gray-900 mb-6 block">Reviews</span>
-                
+
                 <div className="mb-6">
                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 hover:bg-[#1DA1F2] hover:text-white transition-colors cursor-pointer">
                         <Twitter className="w-4 h-4 fill-current" />
@@ -187,11 +200,11 @@ export default async function ReviewPage({ params }: Props) {
           {/* Sidebar */}
           <div className="lg:col-span-4 space-y-8">
             <div className="sticky top-24 space-y-8">
-                
+
                 {/* Info Box */}
                 <div className="bg-white p-6 border border-gray-100 shadow-sm rounded-sm">
                     <h3 className="text-sm font-bold uppercase tracking-widest mb-6 border-b pb-2">Details</h3>
-                    
+
                     <div className="space-y-4 text-sm">
                         {review.details?.priceRange && (
                           <div className="flex items-start gap-3">
@@ -249,21 +262,29 @@ export default async function ReviewPage({ params }: Props) {
                 </div>
 
                 {/* Map Component */}
-                {review.location?.googleMapsUrl && (
+                {mapQuery && googleMapsApiKey && (
                   <div className="bg-gray-100 h-[300px] w-full rounded-sm overflow-hidden relative border border-gray-200">
-                      <iframe 
-                          src={review.location.googleMapsUrl} 
-                          width="100%" 
-                          height="100%" 
-                          style={{ border: 0 }} 
-                          allowFullScreen 
-                          loading="lazy" 
-                          referrerPolicy="no-referrer-when-downgrade"
-                          className="grayscale hover:grayscale-0 transition-all duration-500"
-                      />
+                    <GoogleMapsEmbed
+                      apiKey={googleMapsApiKey}
+                      height={300}
+                      width="100%"
+                      mode="place"
+                      q={mapQuery}
+                      zoom={MAP_DEFAULT_ZOOM}
+                    />
                   </div>
                 )}
-            
+                {mapsOpenUrl && (
+                  <Link
+                    href={mapsOpenUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    Open map in Google Maps
+                  </Link>
+                )}
+
             </div>
           </div>
 
