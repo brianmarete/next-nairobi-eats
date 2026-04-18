@@ -15,9 +15,9 @@ export function Header() {
       </nav>
       
       <div className="flex items-center space-x-5">
-        <button className="hover:text-gray-300 transition-colors">
+        <Link href="/search" className="hover:text-gray-300 transition-colors" aria-label="Search reviews">
           <Search className="w-4 h-4" />
-        </button>
+        </Link>
         <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300 transition-colors">
           <Twitter className="w-4 h-4" />
         </a>

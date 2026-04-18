@@ -2,10 +2,68 @@ import type { CollectionConfig } from 'payload'
 import { lexicalEditor, BlocksFeature } from '@payloadcms/richtext-lexical'
 import { ContentGallery } from '@/blocks/ContentGallery'
 
+const extractRichTextText = (value: unknown): string => {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value.map(extractRichTextText).filter(Boolean).join(' ')
+  if (typeof value !== 'object') return ''
+
+  const node = value as {
+    text?: unknown
+    children?: unknown
+    root?: unknown
+    fields?: unknown
+    caption?: unknown
+  }
+
+  const chunks: string[] = []
+  if (typeof node.text === 'string') chunks.push(node.text)
+  if (node.children) chunks.push(extractRichTextText(node.children))
+  if (node.root) chunks.push(extractRichTextText(node.root))
+  if (node.fields) chunks.push(extractRichTextText(node.fields))
+  if (typeof node.caption === 'string') chunks.push(node.caption)
+
+  return chunks.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+}
+
 export const Reviews: CollectionConfig = {
   slug: 'reviews',
   admin: {
     useAsTitle: 'title',
+  },
+  hooks: {
+    beforeChange: [
+      ({ data }) => {
+        if (!data) return data
+
+        const title = typeof data.title === 'string' ? data.title : ''
+        const description = typeof data.description === 'string' ? data.description : ''
+        const locationName =
+          data.location && typeof data.location === 'object' && typeof data.location.name === 'string'
+            ? data.location.name
+            : ''
+        const tags =
+          data.details && typeof data.details === 'object' && Array.isArray(data.details.tags)
+            ? data.details.tags
+                .map((item: unknown) =>
+                  item && typeof item === 'object' && typeof (item as { tag?: unknown }).tag === 'string'
+                    ? (item as { tag: string }).tag
+                    : '',
+                )
+                .filter(Boolean)
+                .join(' ')
+            : ''
+        const contentText = extractRichTextText(data.content)
+
+        data.searchText = [title, description, locationName, tags, contentText]
+          .filter(Boolean)
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+
+        return data
+      },
+    ],
   },
   fields: [
     {
@@ -17,6 +75,13 @@ export const Reviews: CollectionConfig = {
       name: 'description',
       type: 'textarea',
       required: true,
+    },
+    {
+      name: 'searchText',
+      type: 'textarea',
+      admin: {
+        hidden: true,
+      },
     },
     {
       name: 'slug',
