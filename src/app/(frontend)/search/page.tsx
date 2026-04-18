@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Header } from '@/components/Header'
 import { Footer } from '@/components/Footer'
 import { resolveMediaUrl } from '@/lib/media'
+import { MultiAutocompleteInput } from '@/components/search/MultiAutocompleteInput'
 
 const PRICE_OPTIONS = [
   { value: 'cheap', label: '$ (Cheap)' },
@@ -44,8 +45,10 @@ type ReviewDoc = {
 type SearchPageProps = {
   searchParams: Promise<{
     q?: string
-    category?: string
+    category?: string | string[]
     price?: string
+    tag?: string | string[]
+    location?: string
     page?: string
   }>
 }
@@ -212,9 +215,17 @@ const scoreReview = (review: ReviewDoc, query: string): number => {
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const { q, category, price, page } = await searchParams
+  const { q, category, price, tag, location, page } = await searchParams
   const query = q?.trim() ?? ''
-  const selectedCategorySlug = category?.trim() ?? ''
+  const selectedTags = (Array.isArray(tag) ? tag : tag ? [tag] : [])
+    .flatMap((item) => item.split(','))
+    .map((item) => item.trim())
+    .filter(Boolean)
+  const selectedLocation = location?.trim() ?? ''
+  const selectedCategorySlugs = (Array.isArray(category) ? category : category ? [category] : [])
+    .flatMap((item) => item.split(','))
+    .map((item) => item.trim())
+    .filter(Boolean)
   const selectedPrice = price?.trim() ?? ''
   const currentPage = Math.max(1, Number.parseInt(page || '1', 10) || 1)
 
@@ -226,14 +237,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   })
 
   const categories = categoriesData.docs as CategoryDoc[]
-  const selectedCategory = categories.find((item) => item.slug === selectedCategorySlug)
+  const selectedCategoryIds = categories
+    .filter((item) => selectedCategorySlugs.includes(item.slug))
+    .map((item) => item.id)
 
   const whereAndClauses: Array<Record<string, unknown>> = []
 
-  if (selectedCategory) {
+  if (selectedCategoryIds.length > 0) {
     whereAndClauses.push({
       category: {
-        equals: selectedCategory.id,
+        in: selectedCategoryIds,
       },
     })
   }
@@ -273,6 +286,33 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     })
   }
 
+  if (selectedTags.length > 0) {
+    whereAndClauses.push({
+      and: selectedTags.map((selectedTag) => ({
+        or: [
+          {
+            'details.tags.tag': {
+              like: selectedTag,
+            },
+          },
+          {
+            searchText: {
+              like: selectedTag,
+            },
+          },
+        ],
+      })),
+    })
+  }
+
+  if (selectedLocation.length > 0) {
+    whereAndClauses.push({
+      'location.name': {
+        like: selectedLocation,
+      },
+    })
+  }
+
   const reviewsData = await payload.find({
     collection: 'reviews',
     limit: CANDIDATE_LIMIT,
@@ -288,8 +328,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   })
 
   const reviews = reviewsData.docs as ReviewDoc[]
+  const availableTags = Array.from(
+    new Set(
+      reviews
+        .flatMap((review) => review.details?.tags || [])
+        .map((item) => item?.tag?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ).sort((a, b) => a.localeCompare(b))
 
-  const queryTokens = tokenize(query)
+  const queryTokens = tokenize([query, selectedTags.join(' '), selectedLocation].filter(Boolean).join(' '))
 
   const filteredAndRanked = reviews
     .map((review) => ({
@@ -313,12 +361,97 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const createPageHref = (targetPage: number): string => {
     const params = new URLSearchParams()
     if (query) params.set('q', query)
-    if (selectedCategorySlug) params.set('category', selectedCategorySlug)
+    for (const slug of selectedCategorySlugs) params.append('category', slug)
     if (selectedPrice) params.set('price', selectedPrice)
+    for (const selectedTag of selectedTags) params.append('tag', selectedTag)
+    if (selectedLocation) params.set('location', selectedLocation)
     if (targetPage > 1) params.set('page', String(targetPage))
     const queryString = params.toString()
     return queryString ? `/search?${queryString}` : '/search'
   }
+
+  const hasActiveFilters =
+    query.length > 0 ||
+    selectedCategorySlugs.length > 0 ||
+    selectedPrice.length > 0 ||
+    selectedTags.length > 0 ||
+    selectedLocation.length > 0
+
+  const filterControls = (
+    <>
+      <div>
+        <h2 className="text-sm font-bold uppercase tracking-widest text-gray-900">Filters</h2>
+        <p className="text-xs text-gray-500 mt-1">Refine results</p>
+      </div>
+
+      <div>
+        <label htmlFor="search-query" className="block text-xs font-semibold uppercase tracking-widest text-gray-700 mb-2">
+          Search
+        </label>
+        <input
+          id="search-query"
+          name="q"
+          type="text"
+          defaultValue={query}
+          placeholder="Dish, restaurant, or keyword"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-black focus:outline-none"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="search-location" className="block text-xs font-semibold uppercase tracking-widest text-gray-700 mb-2">
+          Location
+        </label>
+        <input
+          id="search-location"
+          name="location"
+          type="text"
+          defaultValue={selectedLocation}
+          placeholder="e.g. Westlands"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-black focus:outline-none"
+        />
+      </div>
+
+      <div>
+        <MultiAutocompleteInput
+          name="tag"
+          label="Tags"
+          placeholder="Type to find tags"
+          options={availableTags.map((item) => ({ value: item, label: item }))}
+          selectedValues={selectedTags}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="search-price" className="block text-xs font-semibold uppercase tracking-widest text-gray-700 mb-2">
+          Price
+        </label>
+        <select
+          id="search-price"
+          name="price"
+          defaultValue={selectedPrice}
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-black focus:outline-none"
+        >
+          <option value="">All price ranges</option>
+          {PRICE_OPTIONS.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <MultiAutocompleteInput
+          name="category"
+          label="Categories"
+          placeholder="Type to find categories"
+          options={categories.map((item) => ({ value: item.slug, label: item.name }))}
+          selectedValues={selectedCategorySlugs}
+        />
+      </div>
+    </>
+  )
 
   return (
     <div className="min-h-screen bg-[#F2F2F2] font-sans">
@@ -328,153 +461,194 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         <h1 className="text-4xl font-light tracking-wide font-sans text-gray-200">Search</h1>
       </section>
 
-      <section className="py-12 px-6 container mx-auto max-w-6xl">
-        <form action="/search" method="get" className="mb-10 space-y-3">
-          <label htmlFor="search-query" className="sr-only">
-            Search reviews
+      <section className="py-12 px-6 container mx-auto max-w-7xl">
+        <div className="lg:hidden mb-4">
+          <input id="mobile-filter-drawer" type="checkbox" className="peer sr-only" />
+          <label
+            htmlFor="mobile-filter-drawer"
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            Open Filters
           </label>
-          <div className="flex gap-3">
-            <input
-              id="search-query"
-              name="q"
-              type="text"
-              defaultValue={query}
-              placeholder="Search by restaurant, location, or keyword..."
-              className="w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-black focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="rounded-md bg-black px-5 py-3 text-sm font-medium text-white hover:bg-gray-900 transition-colors"
-            >
-              Search
-            </button>
-          </div>
+          <div className="pointer-events-none fixed inset-0 z-40 opacity-0 transition-opacity duration-300 peer-checked:pointer-events-auto peer-checked:opacity-100">
+            <label htmlFor="mobile-filter-drawer" className="absolute inset-0 bg-black/40" />
+            <div className="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-white shadow-xl p-5 overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-gray-900">Filter Results</h3>
+                <label
+                  htmlFor="mobile-filter-drawer"
+                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                >
+                  Close
+                </label>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <select
-              name="category"
-              defaultValue={selectedCategorySlug}
-              className="rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-black focus:outline-none"
-            >
-              <option value="">All categories</option>
-              {categories.map((item) => (
-                <option key={item.id} value={item.slug}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              name="price"
-              defaultValue={selectedPrice}
-              className="rounded-md border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 focus:border-black focus:outline-none"
-            >
-              <option value="">All price ranges</option>
-              {PRICE_OPTIONS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </form>
-
-        {query.length === 0 && !selectedCategorySlug && !selectedPrice && (
-          <p className="text-center text-gray-600 py-12">
-            Enter a search term or apply filters to find reviews.
-          </p>
-        )}
-
-        {(query.length > 0 || selectedCategorySlug || selectedPrice) && (
-          <>
-            <p className="mb-8 text-sm text-gray-600">
-              {totalResults} result{totalResults === 1 ? '' : 's'}
-              {query.length > 0 ? ` for "${query}"` : ''}
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {pageResults.map(({ review }) => {
-                const imageUrl = resolveMediaUrl(review.coverImage)
-                const contentText = review.searchText || extractRichTextText(review.content)
-                const contentSnippet = buildSnippet(contentText, queryTokens)
-                const tags = (review.details?.tags || [])
-                  .map((item) => item?.tag?.trim())
-                  .filter(Boolean) as string[]
-
-                return (
-                  <Link
-                    href={`/reviews/${review.slug}`}
-                    key={review.id}
-                    className="group bg-white block h-full flex flex-col hover:shadow-lg transition-shadow duration-300"
+              <form action="/search" method="get" className="space-y-5">
+                {filterControls}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 rounded-md bg-black px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-900 transition-colors"
                   >
-                    <div className="relative aspect-[16/9] overflow-hidden bg-gray-100">
-                      {imageUrl ? (
-                        <Image
-                          src={imageUrl}
-                          alt={review.title}
-                          fill
-                          className="object-cover transition-transform duration-700 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300 bg-gray-50">
-                          <span className="text-xs uppercase tracking-widest">No Image</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-6 flex-1 flex flex-col">
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 font-sans">
-                        {highlightText(review.title, queryTokens)}
-                      </h3>
-                      <p className="text-gray-600 text-xs leading-relaxed font-light line-clamp-5">
-                        {highlightText(review.description, queryTokens)}
-                      </p>
-                      {contentSnippet && (
-                        <p className="mt-2 text-gray-500 text-xs leading-relaxed font-light line-clamp-4">
-                          {highlightText(contentSnippet, queryTokens)}
-                        </p>
-                      )}
-                      {tags.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {tags.slice(0, 3).map((tag) => (
-                            <span key={`${review.id}-${tag}`} className="text-[10px] bg-gray-100 px-2 py-1 rounded">
-                              {highlightText(tag, queryTokens)}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    Apply Filters
+                  </button>
+                  <Link
+                    href="/search"
+                    className="rounded-md border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+                  >
+                    Reset
                   </Link>
-                )
-              })}
+                </div>
+              </form>
             </div>
+          </div>
+        </div>
 
-            {totalResults > 0 && (
-              <div className="flex items-center justify-center gap-3 mt-10">
-                <Link
-                  href={createPageHref(Math.max(1, safePage - 1))}
-                  className={`rounded border px-3 py-2 text-xs ${safePage === 1 ? 'pointer-events-none text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-100'}`}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <aside className="hidden lg:block lg:col-span-4 xl:col-span-3">
+            <form action="/search" method="get" className="bg-white border border-gray-200 p-6 rounded-sm shadow-sm space-y-5 lg:sticky lg:top-24">
+              {filterControls}
+
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="flex-1 rounded-md bg-black px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-900 transition-colors"
                 >
-                  Previous
-                </Link>
-                <span className="text-xs text-gray-600">
-                  Page {safePage} of {totalPages}
-                </span>
+                  Apply Filters
+                </button>
                 <Link
-                  href={createPageHref(Math.min(totalPages, safePage + 1))}
-                  className={`rounded border px-3 py-2 text-xs ${safePage >= totalPages ? 'pointer-events-none text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                  href="/search"
+                  className="rounded-md border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
                 >
-                  Next
+                  Reset
                 </Link>
+              </div>
+            </form>
+          </aside>
+
+          <div className="lg:col-span-8 xl:col-span-9">
+            {!hasActiveFilters && (
+              <div className="bg-white border border-gray-200 rounded-sm p-10 text-center text-gray-600">
+                Use the filters on the left to discover reviews.
               </div>
             )}
 
-            {totalResults === 0 && (
-              <p className="text-center text-gray-500 py-12">
-                No reviews found. Try a different keyword.
-              </p>
+            {hasActiveFilters && (
+              <>
+                <div className="bg-white border border-gray-200 rounded-sm p-4 mb-6">
+                  <p className="text-sm text-gray-700">
+                    {totalResults} result{totalResults === 1 ? '' : 's'}
+                    {query.length > 0 ? ` for "${query}"` : ''}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {query && <span className="text-xs bg-gray-100 px-2 py-1 rounded">Query: {query}</span>}
+                    {selectedLocation && <span className="text-xs bg-gray-100 px-2 py-1 rounded">Location: {selectedLocation}</span>}
+                    {selectedTags.map((selectedTag) => (
+                      <span key={selectedTag} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        Tag: {selectedTag}
+                      </span>
+                    ))}
+                    {selectedPrice && (
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        Price: {PRICE_OPTIONS.find((item) => item.value === selectedPrice)?.label || selectedPrice}
+                      </span>
+                    )}
+                    {selectedCategorySlugs.map((slug) => (
+                      <span key={slug} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        Category: {categories.find((item) => item.slug === slug)?.name || slug}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
-          </>
-        )}
+            {hasActiveFilters && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {pageResults.map(({ review }) => {
+                    const imageUrl = resolveMediaUrl(review.coverImage)
+                    const contentText = review.searchText || extractRichTextText(review.content)
+                    const contentSnippet = buildSnippet(contentText, queryTokens)
+                    const tags = (review.details?.tags || [])
+                      .map((item) => item?.tag?.trim())
+                      .filter(Boolean) as string[]
+
+                    return (
+                      <Link
+                        href={`/reviews/${review.slug}`}
+                        key={review.id}
+                        className="group bg-white block h-full flex flex-col border border-gray-200 hover:shadow-lg transition-shadow duration-300"
+                      >
+                        <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
+                          {imageUrl ? (
+                            <Image
+                              src={imageUrl}
+                              alt={review.title}
+                              fill
+                              className="object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-300 bg-gray-50">
+                              <span className="text-xs uppercase tracking-widest">No Image</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-5 flex-1 flex flex-col">
+                          <h3 className="text-base font-bold text-gray-900 mb-2 font-sans">
+                            {highlightText(review.title, queryTokens)}
+                          </h3>
+                          <p className="text-gray-600 text-xs leading-relaxed font-light line-clamp-4">
+                            {highlightText(review.description, queryTokens)}
+                          </p>
+                          {contentSnippet && (
+                            <p className="mt-2 text-gray-500 text-xs leading-relaxed font-light line-clamp-3">
+                              {highlightText(contentSnippet, queryTokens)}
+                            </p>
+                          )}
+                          {tags.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {tags.slice(0, 3).map((itemTag) => (
+                                <span key={`${review.id}-${itemTag}`} className="text-[10px] bg-gray-100 px-2 py-1 rounded">
+                                  {highlightText(itemTag, queryTokens)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+
+                {totalResults > 0 && (
+                  <div className="flex items-center justify-center gap-3 mt-10">
+                    <Link
+                      href={createPageHref(Math.max(1, safePage - 1))}
+                      className={`rounded border px-3 py-2 text-xs ${safePage === 1 ? 'pointer-events-none text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                    >
+                      Previous
+                    </Link>
+                    <span className="text-xs text-gray-600">
+                      Page {safePage} of {totalPages}
+                    </span>
+                    <Link
+                      href={createPageHref(Math.min(totalPages, safePage + 1))}
+                      className={`rounded border px-3 py-2 text-xs ${safePage >= totalPages ? 'pointer-events-none text-gray-400 border-gray-200' : 'text-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                    >
+                      Next
+                    </Link>
+                  </div>
+                )}
+
+                {totalResults === 0 && (
+                  <div className="bg-white border border-gray-200 rounded-sm p-10 text-center text-gray-500">
+                    No reviews found. Try different filters.
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       </section>
 
       <Footer />
