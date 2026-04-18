@@ -29,6 +29,16 @@ type RichTextNode = {
   children?: RichTextNode[]
 }
 
+type ReviewCategory = {
+  id: string
+  name: string
+  slug: string
+}
+
+type ReviewTag = {
+  tag?: string | null
+}
+
 type Props = {
   params: Promise<{
     slug: string
@@ -56,6 +66,97 @@ export default async function ReviewPage({ params }: Props) {
   if (!review) {
     notFound()
   }
+
+  const currentCategoryIds = (review.category ?? [])
+    .map((category: unknown) => {
+      if (category && typeof category === 'object' && 'id' in category) {
+        return String((category as { id: string | number }).id)
+      }
+
+      return typeof category === 'string' || typeof category === 'number' ? String(category) : null
+    })
+    .filter((id): id is string => Boolean(id))
+
+  const currentLocationName = review.location?.name?.trim().toLowerCase() || null
+  const currentTags = new Set(
+    (review.details?.tags ?? [])
+      .map((tagItem: ReviewTag) => tagItem.tag?.trim().toLowerCase())
+      .filter((tag): tag is string => Boolean(tag)),
+  )
+
+  const relatedCandidates = await payload.find({
+    collection: 'reviews',
+    depth: 2,
+    limit: 24,
+    sort: '-publishedDate',
+    where: {
+      and: [
+        {
+          id: {
+            not_equals: review.id,
+          },
+        },
+        {
+          or: [
+            ...(currentCategoryIds.length > 0
+              ? [
+                  {
+                    category: {
+                      in: currentCategoryIds,
+                    },
+                  },
+                ]
+              : []),
+            ...(currentLocationName
+              ? [
+                  {
+                    'location.name': {
+                      equals: review.location?.name,
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+      ],
+    },
+  })
+
+  const relatedReviews = relatedCandidates.docs
+    .map((candidate) => {
+      const candidateCategoryIds = (candidate.category ?? [])
+        .map((category: unknown) => {
+          if (category && typeof category === 'object' && 'id' in category) {
+            return String((category as { id: string | number }).id)
+          }
+
+          return typeof category === 'string' || typeof category === 'number' ? String(category) : null
+        })
+        .filter((id): id is string => Boolean(id))
+
+      const sharedCategories = candidateCategoryIds.filter((id) => currentCategoryIds.includes(id)).length
+
+      const candidateTags = new Set(
+        (candidate.details?.tags ?? [])
+          .map((tagItem: ReviewTag) => tagItem.tag?.trim().toLowerCase())
+          .filter((tag): tag is string => Boolean(tag)),
+      )
+
+      const sharedTags = [...candidateTags].filter((tag) => currentTags.has(tag)).length
+      const candidateLocationName = candidate.location?.name?.trim().toLowerCase() || null
+      const sameLocation = currentLocationName && candidateLocationName && currentLocationName === candidateLocationName
+
+      const score = sharedCategories * 3 + sharedTags * 2 + (sameLocation ? 1 : 0)
+
+      return {
+        candidate,
+        score,
+      }
+    })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 4)
+    .map(({ candidate }) => candidate)
 
   const renderStars = (rating: number) => {
     return (
@@ -391,6 +492,49 @@ export default async function ReviewPage({ params }: Props) {
           </div>
 
         </div>
+
+        {relatedReviews.length > 0 && (
+          <section className="mt-16 border-t border-gray-200 pt-10">
+            <h2 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 mb-6">Related Restaurants</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {relatedReviews.map((relatedReview) => {
+                const relatedCoverImageUrl = resolveMediaUrl(relatedReview.coverImage)
+                return (
+                  <Link
+                    key={relatedReview.id}
+                    href={`/reviews/${relatedReview.slug}`}
+                    className="group block bg-white border border-gray-100 rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="relative aspect-[4/3] bg-gray-100">
+                      {relatedCoverImageUrl && (
+                        <Image
+                          src={relatedCoverImageUrl}
+                          alt={relatedReview.title}
+                          fill
+                          className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                        />
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                        {relatedReview.title}
+                      </h3>
+                      {relatedReview.category && relatedReview.category.length > 0 && (
+                        <p className="mt-2 text-xs uppercase tracking-wider text-gray-500">
+                          {(relatedReview.category as ReviewCategory[])
+                            .map((cat) => cat.name)
+                            .filter(Boolean)
+                            .slice(0, 2)
+                            .join(' • ')}
+                        </p>
+                      )}
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
+        )}
       </main>
 
       <Footer />
