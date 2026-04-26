@@ -10,6 +10,8 @@ import type { ElementType } from "react"
 import { Star, MapPin, DollarSign, Info, Twitter, Tag } from "lucide-react"
 import { resolveMediaUrl } from "@/lib/media"
 import { InlineGalleryBlock } from "@/components/content/InlineGalleryBlock"
+import type { Metadata } from "next"
+import { getAbsoluteUrl, getDefaultOgImage } from "@/lib/seo"
 
 type RichTextNode = {
   type?: string
@@ -45,6 +47,63 @@ type Props = {
   }>
 }
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  const payload = await getPayload({ config })
+
+  const result = await payload.find({
+    collection: "reviews",
+    where: {
+      slug: {
+        equals: slug,
+      },
+    },
+    depth: 1,
+    limit: 1,
+  })
+
+  const review = result.docs[0]
+
+  if (!review) {
+    return {
+      title: "Review not found",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    }
+  }
+
+  const imageUrl = resolveMediaUrl(review.coverImage) || getDefaultOgImage()
+  const canonicalPath = `/reviews/${review.slug}`
+
+  return {
+    title: review.title,
+    description: review.description,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      type: "article",
+      url: canonicalPath,
+      title: review.title,
+      description: review.description,
+      images: [
+        {
+          url: getAbsoluteUrl(imageUrl),
+          alt: review.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: review.title,
+      description: review.description,
+      images: [getAbsoluteUrl(imageUrl)],
+    },
+  }
+}
+
 export default async function ReviewPage({ params }: Props) {
   const MAP_DEFAULT_ZOOM = '17'
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
@@ -75,13 +134,13 @@ export default async function ReviewPage({ params }: Props) {
 
       return typeof category === 'string' || typeof category === 'number' ? String(category) : null
     })
-    .filter((id): id is string => Boolean(id))
+    .filter((id: string | null): id is string => Boolean(id))
 
   const currentLocationName = review.location?.name?.trim().toLowerCase() || null
-  const currentTags = new Set(
+  const currentTags = new Set<string>(
     (review.details?.tags ?? [])
       .map((tagItem: ReviewTag) => tagItem.tag?.trim().toLowerCase())
-      .filter((tag): tag is string => Boolean(tag)),
+      .filter((tag: string | undefined): tag is string => Boolean(tag)),
   )
 
   const relatedCandidates = await payload.find({
@@ -132,14 +191,14 @@ export default async function ReviewPage({ params }: Props) {
 
           return typeof category === 'string' || typeof category === 'number' ? String(category) : null
         })
-        .filter((id): id is string => Boolean(id))
+        .filter((id: string | null): id is string => Boolean(id))
 
-      const sharedCategories = candidateCategoryIds.filter((id) => currentCategoryIds.includes(id)).length
+      const sharedCategories = candidateCategoryIds.filter((id: string) => currentCategoryIds.includes(id)).length
 
-      const candidateTags = new Set(
+      const candidateTags = new Set<string>(
         (candidate.details?.tags ?? [])
           .map((tagItem: ReviewTag) => tagItem.tag?.trim().toLowerCase())
-          .filter((tag): tag is string => Boolean(tag)),
+          .filter((tag: string | undefined): tag is string => Boolean(tag)),
       )
 
       const sharedTags = [...candidateTags].filter((tag) => currentTags.has(tag)).length

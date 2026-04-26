@@ -5,11 +5,70 @@ import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { ReviewGridCard } from "@/components/ReviewGridCard"
 import { resolveMediaUrl } from "@/lib/media"
+import type { Metadata } from "next"
+import { getAbsoluteUrl, getDefaultOgImage } from "@/lib/seo"
 
 type Props = {
   params: Promise<{
     slug: string
   }>
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  const payload = await getPayload({ config })
+
+  const categoryResult = await payload.find({
+    collection: "categories",
+    where: {
+      slug: {
+        equals: slug,
+      },
+    },
+    limit: 1,
+  })
+
+  const category = categoryResult.docs[0]
+
+  if (!category) {
+    return {
+      title: "Category not found",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    }
+  }
+
+  const description =
+    category.description || `Browse ${category.name} restaurant reviews on Nairobi Eats.`
+  const canonicalPath = `/categories/${category.slug}`
+
+  return {
+    title: category.name,
+    description,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      type: "website",
+      url: canonicalPath,
+      title: category.name,
+      description,
+      images: [
+        {
+          url: getAbsoluteUrl(getDefaultOgImage()),
+          alt: `${category.name} reviews`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: category.name,
+      description,
+      images: [getAbsoluteUrl(getDefaultOgImage())],
+    },
+  }
 }
 
 export default async function CategoryPage({ params }: Props) {
