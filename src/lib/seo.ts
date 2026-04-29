@@ -1,4 +1,5 @@
 const SITE_NAME = "Nairobi Eats"
+const SITE_DESCRIPTION = "Restaurant reviews, food guides, and dining picks from Nairobi and beyond."
 
 const FALLBACK_SITE_URL = "http://localhost:3000"
 
@@ -21,8 +22,6 @@ export const getAbsoluteUrl = (path: string): string => {
 }
 
 export const getDefaultOgImage = (): string =>
-  "https://images.unsplash.com/photo-1626084795995-1262d5b62b08?q=80&w=2072&auto=format&fit=crop"
+  getAbsoluteUrl("/opengraph-image")
 
-export const buildTitle = (title: string): string => `${title} | ${SITE_NAME}`
-
-export { SITE_NAME }
+export { SITE_NAME, SITE_DESCRIPTION }

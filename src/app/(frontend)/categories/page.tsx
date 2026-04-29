@@ -1,8 +1,31 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import type { Metadata } from "next"
 import Link from 'next/link'
 import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
+import { getAbsoluteUrl, getDefaultOgImage } from "@/lib/seo"
+
+export const metadata: Metadata = {
+  title: "Categories",
+  description: "Explore Nairobi Eats categories to find restaurants by cuisine, vibe, and occasion.",
+  alternates: {
+    canonical: "/categories",
+  },
+  openGraph: {
+    type: "website",
+    url: "/categories",
+    title: "Nairobi Eats Categories",
+    description: "Explore Nairobi Eats categories to find restaurants by cuisine, vibe, and occasion.",
+    images: [getDefaultOgImage()],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nairobi Eats Categories",
+    description: "Explore Nairobi Eats categories to find restaurants by cuisine, vibe, and occasion.",
+    images: [getDefaultOgImage()],
+  },
+}
 
 export default async function CategoriesPage() {
   const payload = await getPayload({ config })
@@ -11,8 +34,41 @@ export default async function CategoriesPage() {
     sort: 'name',
   })
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: getAbsoluteUrl("/"),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Categories",
+        item: getAbsoluteUrl("/categories"),
+      },
+    ],
+  }
+
+  const itemListSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Review categories",
+    itemListElement: categories.docs.map((category, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: getAbsoluteUrl(`/categories/${category.slug}`),
+      name: category.name,
+    })),
+  }
+
   return (
     <div className="min-h-screen bg-[#F2F2F2] font-sans">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }} />
       <Header />
 
       {/* Hero Section */}

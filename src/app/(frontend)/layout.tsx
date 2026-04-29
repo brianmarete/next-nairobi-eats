@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { getDefaultOgImage, getMetadataBase, SITE_NAME } from "@/lib/seo";
+import { getDefaultOgImage, getMetadataBase, SITE_DESCRIPTION, SITE_NAME } from "@/lib/seo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,12 +19,12 @@ export const metadata: Metadata = {
     default: SITE_NAME,
     template: `%s | ${SITE_NAME}`,
   },
-  description: "Restaurant reviews, food guides, and dining picks from Nairobi and beyond.",
+  description: SITE_DESCRIPTION,
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
     title: SITE_NAME,
-    description: "Restaurant reviews, food guides, and dining picks from Nairobi and beyond.",
+    description: SITE_DESCRIPTION,
     images: [
       {
         url: getDefaultOgImage(),
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: SITE_NAME,
-    description: "Restaurant reviews, food guides, and dining picks from Nairobi and beyond.",
+    description: SITE_DESCRIPTION,
     images: [getDefaultOgImage()],
   },
 };

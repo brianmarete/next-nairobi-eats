@@ -1,5 +1,6 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
+import type { Metadata } from "next"
 import Link from "next/link";
 import Image from "next/image";
 import { Header } from "@/components/Header";
@@ -7,6 +8,42 @@ import { Footer } from "@/components/Footer";
 import { ReviewCard } from "@/components/ReviewCard";
 import { Utensils } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/media";
+import { getAbsoluteUrl, getDefaultOgImage, SITE_DESCRIPTION, SITE_NAME } from "@/lib/seo";
+
+type HomeReview = {
+  title: string
+  description: string
+  image: string | null
+  slug: string
+}
+
+export const metadata: Metadata = {
+  title: "Home",
+  description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: getDefaultOgImage(),
+        width: 1200,
+        height: 630,
+        alt: `${SITE_NAME} social preview`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: [getDefaultOgImage()],
+  },
+}
 
 export default async function Home() {
   const payload = await getPayload({ config })
@@ -22,10 +59,47 @@ export default async function Home() {
     description: review.description,
     image: resolveMediaUrl(review.coverImage),
     slug: review.slug
-  }));
+  })) as HomeReview[];
+
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: getAbsoluteUrl("/"),
+    description: SITE_DESCRIPTION,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${getAbsoluteUrl("/search")}?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  }
+
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: getAbsoluteUrl("/"),
+    logo: getDefaultOgImage(),
+    sameAs: ["https://twitter.com"],
+  }
+
+  const itemListSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Featured Nairobi Eats reviews",
+    itemListElement: reviews.map((review, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: getAbsoluteUrl(`/reviews/${review.slug}`),
+      name: review.title,
+    })),
+  }
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-[#F8F9FA]">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }} />
       <Header />
       
       {/* Hero Section */}

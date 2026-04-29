@@ -88,6 +88,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: canonicalPath,
       title: review.title,
       description: review.description,
+      publishedTime: review.publishedDate || undefined,
       images: [
         {
           url: getAbsoluteUrl(imageUrl),
@@ -322,8 +323,64 @@ export default async function ReviewPage({ params }: Props) {
     })
   }
 
+  const canonicalUrl = getAbsoluteUrl(`/reviews/${review.slug}`)
+  const shareImage = getAbsoluteUrl(heroImageUrl || getDefaultOgImage())
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: getAbsoluteUrl("/"),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Reviews",
+        item: getAbsoluteUrl("/reviews"),
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: review.title,
+        item: canonicalUrl,
+      },
+    ],
+  }
+
+  const reviewSchema = {
+    "@context": "https://schema.org",
+    "@type": "Review",
+    itemReviewed: {
+      "@type": "Restaurant",
+      name: review.title,
+      address: review.location?.name || undefined,
+    },
+    url: canonicalUrl,
+    name: review.title,
+    reviewBody: review.description,
+    datePublished: review.publishedDate,
+    author: {
+      "@type": "Organization",
+      name: "Nairobi Eats",
+    },
+    image: shareImage,
+    reviewRating: review.ratings?.food
+      ? {
+          "@type": "Rating",
+          ratingValue: review.ratings.food,
+          bestRating: 5,
+          worstRating: 1,
+        }
+      : undefined,
+  }
+
   return (
     <div className="min-h-screen bg-[#FAFAFA] font-sans text-gray-900">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(reviewSchema) }} />
       <Header />
 
       {/* Hero Section */}

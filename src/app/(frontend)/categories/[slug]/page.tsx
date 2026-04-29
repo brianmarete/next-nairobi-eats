@@ -100,8 +100,54 @@ export default async function CategoryPage({ params }: Props) {
     depth: 1,
   })
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: getAbsoluteUrl("/"),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Categories",
+        item: getAbsoluteUrl("/categories"),
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: category.name,
+        item: getAbsoluteUrl(`/categories/${category.slug}`),
+      },
+    ],
+  }
+
+  const itemListSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `${category.name} reviews`,
+    itemListElement: reviews.docs
+      .map((review, index) => {
+        if (!review || typeof review !== "object") return null
+        const typedReview = review as { slug?: string; title?: string }
+        if (!typedReview.slug || !typedReview.title) return null
+        return {
+          "@type": "ListItem",
+          position: index + 1,
+          url: getAbsoluteUrl(`/reviews/${typedReview.slug}`),
+          name: typedReview.title,
+        }
+      })
+      .filter(Boolean),
+  }
+
   return (
     <div className="min-h-screen bg-[#F2F2F2] font-sans">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }} />
       <Header />
 
       {/* Hero Section */}

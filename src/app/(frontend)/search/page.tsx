@@ -1,11 +1,14 @@
 import { getPayload } from 'payload'
+import type { Where } from 'payload'
 import config from '@payload-config'
+import type { Metadata } from "next"
 import Image from 'next/image'
 import Link from 'next/link'
 import { Header } from '@/components/Header'
 import { Footer } from '@/components/Footer'
 import { resolveMediaUrl } from '@/lib/media'
 import { MultiAutocompleteInput } from '@/components/search/MultiAutocompleteInput'
+import { getDefaultOgImage } from '@/lib/seo'
 
 const PRICE_OPTIONS = [
   { value: 'cheap', label: '$ (Cheap)' },
@@ -51,6 +54,40 @@ type SearchPageProps = {
     location?: string
     page?: string
   }>
+}
+
+export async function generateMetadata({ searchParams }: SearchPageProps): Promise<Metadata> {
+  const { q } = await searchParams
+  const query = q?.trim()
+  const title = query ? `Search results for "${query}"` : "Search reviews"
+  const description = query
+    ? `Search results for "${query}" on Nairobi Eats.`
+    : "Search Nairobi Eats reviews by category, price, tags, and location."
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: "/search",
+    },
+    robots: {
+      index: false,
+      follow: true,
+    },
+    openGraph: {
+      type: "website",
+      url: "/search",
+      title,
+      description,
+      images: [getDefaultOgImage()],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [getDefaultOgImage()],
+    },
+  }
 }
 
 const normalize = (value: string): string => value.toLowerCase().trim()
@@ -241,7 +278,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     .filter((item) => selectedCategorySlugs.includes(item.slug))
     .map((item) => item.id)
 
-  const whereAndClauses: Array<Record<string, unknown>> = []
+  const whereAndClauses: Where[] = []
 
   if (selectedCategoryIds.length > 0) {
     whereAndClauses.push({
@@ -288,7 +325,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   if (selectedTags.length > 0) {
     whereAndClauses.push({
-      and: selectedTags.map((selectedTag) => ({
+      and: selectedTags.map((selectedTag): Where => ({
         or: [
           {
             'details.tags.tag': {
@@ -566,7 +603,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {pageResults.map(({ review }) => {
-                    const imageUrl = resolveMediaUrl(review.coverImage)
+                    const imageUrl = resolveMediaUrl(review.coverImage as Parameters<typeof resolveMediaUrl>[0])
                     const contentText = review.searchText || extractRichTextText(review.content)
                     const contentSnippet = buildSnippet(contentText, queryTokens)
                     const tags = (review.details?.tags || [])
