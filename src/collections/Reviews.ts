@@ -2,26 +2,45 @@ import type { CollectionConfig } from 'payload'
 import { lexicalEditor, BlocksFeature } from '@payloadcms/richtext-lexical'
 import { ContentGallery } from '@/blocks/ContentGallery'
 
-const extractRichTextText = (value: unknown): string => {
+const MAX_RICHTEXT_TRAVERSE_DEPTH = 12
+
+const extractRichTextText = (
+  value: unknown,
+  seen = new WeakSet<object>(),
+  depth = 0,
+): string => {
   if (!value) return ''
   if (typeof value === 'string') return value
-  if (Array.isArray(value)) return value.map(extractRichTextText).filter(Boolean).join(' ')
+  if (depth > MAX_RICHTEXT_TRAVERSE_DEPTH) return ''
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => extractRichTextText(item, seen, depth + 1))
+      .filter(Boolean)
+      .join(' ')
+  }
   if (typeof value !== 'object') return ''
+
+  if (seen.has(value)) return ''
+  seen.add(value)
 
   const node = value as {
     text?: unknown
     children?: unknown
     root?: unknown
-    fields?: unknown
+    fields?: {
+      caption?: unknown
+      alt?: unknown
+    }
     caption?: unknown
   }
 
   const chunks: string[] = []
   if (typeof node.text === 'string') chunks.push(node.text)
-  if (node.children) chunks.push(extractRichTextText(node.children))
-  if (node.root) chunks.push(extractRichTextText(node.root))
-  if (node.fields) chunks.push(extractRichTextText(node.fields))
+  if (node.children) chunks.push(extractRichTextText(node.children, seen, depth + 1))
+  if (node.root) chunks.push(extractRichTextText(node.root, seen, depth + 1))
   if (typeof node.caption === 'string') chunks.push(node.caption)
+  if (node.fields?.caption) chunks.push(extractRichTextText(node.fields.caption, seen, depth + 1))
+  if (node.fields?.alt) chunks.push(extractRichTextText(node.fields.alt, seen, depth + 1))
 
   return chunks.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
 }
@@ -182,22 +201,24 @@ export const Reviews: CollectionConfig = {
                 type: 'number',
                 min: 0,
                 max: 5,
-                step: 0.5,
             },
             {
                 name: 'service',
                 type: 'number',
                 min: 0,
                 max: 5,
-                step: 0.5,
             },
             {
                 name: 'ambience',
                 type: 'number',
                 min: 0,
                 max: 5,
-                step: 0.5,
-            }
+            },
+            {
+                name: 'halal',
+                type: 'checkbox',
+                defaultValue: false,
+            },
         ]
     },
     {

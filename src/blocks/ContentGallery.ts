@@ -9,22 +9,15 @@ export const ContentGallery: Block = {
   fields: [
     {
       name: 'images',
-      type: 'array',
+      type: 'relationship',
       required: true,
+      relationTo: 'media',
+      hasMany: true,
       minRows: 1,
       maxRows: 4,
-      fields: [
-        {
-          name: 'image',
-          type: 'upload',
-          relationTo: 'media',
-          required: true,
-        },
-        {
-          name: 'alt',
-          type: 'text',
-        },
-      ],
+      admin: {
+        allowCreate: false,
+      },
     },
     {
       name: 'caption',

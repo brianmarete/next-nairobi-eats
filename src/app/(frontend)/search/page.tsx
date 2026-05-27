@@ -17,6 +17,18 @@ const PRICE_OPTIONS = [
   { value: 'very_expensive', label: '$$$$ (Very Expensive)' },
 ] as const
 
+const RATING_OPTIONS = [
+  { value: '1', label: '1+' },
+  { value: '1.5', label: '1.5+' },
+  { value: '2', label: '2+' },
+  { value: '2.5', label: '2.5+' },
+  { value: '3', label: '3+' },
+  { value: '3.5', label: '3.5+' },
+  { value: '4', label: '4+' },
+  { value: '4.5', label: '4.5+' },
+  { value: '5', label: '5' },
+] as const
+
 const PAGE_SIZE = 9
 const CANDIDATE_LIMIT = 120
 
@@ -52,6 +64,10 @@ type SearchPageProps = {
     price?: string
     tag?: string | string[]
     location?: string
+    foodRating?: string
+    serviceRating?: string
+    ambienceRating?: string
+    halal?: string
     page?: string
   }>
 }
@@ -252,7 +268,7 @@ const scoreReview = (review: ReviewDoc, query: string): number => {
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const { q, category, price, tag, location, page } = await searchParams
+  const { q, category, price, tag, location, foodRating, serviceRating, ambienceRating, halal, page } = await searchParams
   const query = q?.trim() ?? ''
   const selectedTags = (Array.isArray(tag) ? tag : tag ? [tag] : [])
     .flatMap((item) => item.split(','))
@@ -264,6 +280,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     .map((item) => item.trim())
     .filter(Boolean)
   const selectedPrice = price?.trim() ?? ''
+  const selectedFoodRating = foodRating?.trim() ?? ''
+  const selectedServiceRating = serviceRating?.trim() ?? ''
+  const selectedAmbienceRating = ambienceRating?.trim() ?? ''
+  const selectedHalal = halal?.trim() ?? ''
   const currentPage = Math.max(1, Number.parseInt(page || '1', 10) || 1)
 
   const payload = await getPayload({ config })
@@ -350,6 +370,47 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     })
   }
 
+  if (selectedFoodRating) {
+    const minFoodRating = Number.parseFloat(selectedFoodRating)
+    if (!Number.isNaN(minFoodRating)) {
+      whereAndClauses.push({
+        'ratings.food': {
+          greater_than_equal: minFoodRating,
+        },
+      })
+    }
+  }
+
+  if (selectedServiceRating) {
+    const minServiceRating = Number.parseFloat(selectedServiceRating)
+    if (!Number.isNaN(minServiceRating)) {
+      whereAndClauses.push({
+        'ratings.service': {
+          greater_than_equal: minServiceRating,
+        },
+      })
+    }
+  }
+
+  if (selectedAmbienceRating) {
+    const minAmbienceRating = Number.parseFloat(selectedAmbienceRating)
+    if (!Number.isNaN(minAmbienceRating)) {
+      whereAndClauses.push({
+        'ratings.ambience': {
+          greater_than_equal: minAmbienceRating,
+        },
+      })
+    }
+  }
+
+  if (selectedHalal === 'true' || selectedHalal === 'false') {
+    whereAndClauses.push({
+      'ratings.halal': {
+        equals: selectedHalal === 'true',
+      },
+    })
+  }
+
   const reviewsData = await payload.find({
     collection: 'reviews',
     limit: CANDIDATE_LIMIT,
@@ -402,6 +463,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     if (selectedPrice) params.set('price', selectedPrice)
     for (const selectedTag of selectedTags) params.append('tag', selectedTag)
     if (selectedLocation) params.set('location', selectedLocation)
+    if (selectedFoodRating) params.set('foodRating', selectedFoodRating)
+    if (selectedServiceRating) params.set('serviceRating', selectedServiceRating)
+    if (selectedAmbienceRating) params.set('ambienceRating', selectedAmbienceRating)
+    if (selectedHalal) params.set('halal', selectedHalal)
     if (targetPage > 1) params.set('page', String(targetPage))
     const queryString = params.toString()
     return queryString ? `/search?${queryString}` : '/search'
@@ -412,7 +477,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     selectedCategorySlugs.length > 0 ||
     selectedPrice.length > 0 ||
     selectedTags.length > 0 ||
-    selectedLocation.length > 0
+    selectedLocation.length > 0 ||
+    selectedFoodRating.length > 0 ||
+    selectedServiceRating.length > 0 ||
+    selectedAmbienceRating.length > 0 ||
+    selectedHalal.length > 0
 
   const filterControls = (
     <>
@@ -486,6 +555,79 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           options={categories.map((item) => ({ value: item.slug, label: item.name }))}
           selectedValues={selectedCategorySlugs}
         />
+      </div>
+
+      <div>
+        <label htmlFor="search-food-rating" className="block text-xs font-semibold uppercase tracking-widest text-gray-700 mb-2">
+          Food Rating
+        </label>
+        <select
+          id="search-food-rating"
+          name="foodRating"
+          defaultValue={selectedFoodRating}
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-black focus:outline-none"
+        >
+          <option value="">Any food rating</option>
+          {RATING_OPTIONS.map((item) => (
+            <option key={`food-${item.value}`} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="search-service-rating" className="block text-xs font-semibold uppercase tracking-widest text-gray-700 mb-2">
+          Service Rating
+        </label>
+        <select
+          id="search-service-rating"
+          name="serviceRating"
+          defaultValue={selectedServiceRating}
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-black focus:outline-none"
+        >
+          <option value="">Any service rating</option>
+          {RATING_OPTIONS.map((item) => (
+            <option key={`service-${item.value}`} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="search-ambience-rating" className="block text-xs font-semibold uppercase tracking-widest text-gray-700 mb-2">
+          Ambience Rating
+        </label>
+        <select
+          id="search-ambience-rating"
+          name="ambienceRating"
+          defaultValue={selectedAmbienceRating}
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-black focus:outline-none"
+        >
+          <option value="">Any ambience rating</option>
+          {RATING_OPTIONS.map((item) => (
+            <option key={`ambience-${item.value}`} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="search-halal" className="block text-xs font-semibold uppercase tracking-widest text-gray-700 mb-2">
+          Halal
+        </label>
+        <select
+          id="search-halal"
+          name="halal"
+          defaultValue={selectedHalal}
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-black focus:outline-none"
+        >
+          <option value="">Any</option>
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
       </div>
     </>
   )
@@ -588,6 +730,20 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                     {selectedPrice && (
                       <span className="text-xs bg-gray-100 px-2 py-1 rounded">
                         Price: {PRICE_OPTIONS.find((item) => item.value === selectedPrice)?.label || selectedPrice}
+                      </span>
+                    )}
+                    {selectedFoodRating && (
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">Food: {selectedFoodRating}+</span>
+                    )}
+                    {selectedServiceRating && (
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">Service: {selectedServiceRating}+</span>
+                    )}
+                    {selectedAmbienceRating && (
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">Ambience: {selectedAmbienceRating}+</span>
+                    )}
+                    {selectedHalal && (
+                      <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        Halal: {selectedHalal === 'true' ? 'Yes' : 'No'}
                       </span>
                     )}
                     {selectedCategorySlugs.map((slug) => (

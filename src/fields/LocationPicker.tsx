@@ -1,6 +1,5 @@
 'use client'
 
-import { GoogleMapsEmbed } from '@next/third-parties/google'
 import { FieldLabel, useField } from '@payloadcms/ui'
 import { useEffect, useRef, useState } from 'react'
 
@@ -137,17 +136,18 @@ export const LocationPickerField = ({ field, path }: LocationPickerProps) => {
       {value && <p style={{ marginTop: '0.5rem' }}>Selected place ID: {value}</p>}
       {loadError && <p style={{ color: '#c62828', marginTop: '0.5rem' }}>{loadError}</p>}
 
-      {value && apiKey && (
-        <div style={{ marginTop: '1rem' }}>
-          <GoogleMapsEmbed
-            apiKey={apiKey}
-            height={280}
-            width="100%"
-            mode="place"
-            q={`place_id:${value}`}
-            zoom="17"
-          />
-        </div>
+      {value && (
+        <p style={{ marginTop: '0.5rem' }}>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${encodeURIComponent(
+              value,
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open place in Google Maps
+          </a>
+        </p>
       )}
     </div>
   )

@@ -7,7 +7,7 @@ import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import Image from "next/image"
 import type { ElementType } from "react"
-import { Star, MapPin, DollarSign, Info, Twitter, Tag } from "lucide-react"
+import { Star, MapPin, DollarSign, Info, Twitter, Tag, Check, X } from "lucide-react"
 import { resolveMediaUrl } from "@/lib/media"
 import { InlineGalleryBlock } from "@/components/content/InlineGalleryBlock"
 import type { Metadata } from "next"
@@ -219,17 +219,32 @@ export default async function ReviewPage({ params }: Props) {
     .map(({ candidate }) => candidate)
 
   const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating)
+    const hasHalfStar = rating % 1 >= 0.5
+
     return (
-      <div className="flex text-yellow-500">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`w-4 h-4 ${star <= rating ? "fill-current" : "text-gray-300"}`}
-          />
-        ))}
+      <div className="flex">
+        {[1, 2, 3, 4, 5].map((star) => {
+          const isFull = star <= fullStars
+          const isHalf = !isFull && hasHalfStar && star === fullStars + 1
+
+          return (
+            <span key={star} className="relative inline-flex w-4 h-4">
+              <Star className="w-4 h-4 text-gray-300" />
+              {(isFull || isHalf) && (
+                <span
+                  className="absolute inset-0 overflow-hidden text-yellow-500"
+                  style={{ width: isHalf ? "50%" : "100%" }}
+                >
+                  <Star className="w-4 h-4 fill-current" />
+                </span>
+              )}
+            </span>
+          )
+        })}
       </div>
-    );
-  };
+    )
+  }
 
   const coverImageUrl = resolveMediaUrl(review.coverImage)
   const heroImageUrl = resolveMediaUrl(review.heroImage) || coverImageUrl
@@ -305,11 +320,11 @@ export default async function ReviewPage({ params }: Props) {
       if (node.type === 'block' && node.fields?.blockType === 'contentGallery') {
         const images = (node.fields.images ?? [])
           .map((galleryItem) => {
-            const imageUrl = resolveMediaUrl(galleryItem.image as Parameters<typeof resolveMediaUrl>[0])
+            const imageUrl = resolveMediaUrl(galleryItem as Parameters<typeof resolveMediaUrl>[0])
             if (!imageUrl) return null
             return {
               url: imageUrl,
-              alt: galleryItem.alt || review.title,
+              alt: review.title,
             }
           })
           .filter((item): item is { url: string; alt: string } => Boolean(item))
@@ -483,6 +498,16 @@ export default async function ReviewPage({ params }: Props) {
                     <div className="flex items-center gap-2">
                       {renderStars(review.ratings.ambience)}
                       <span className="text-sm text-gray-400 w-8">{review.ratings.ambience}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Halal</span>
+                    <div className="flex items-center">
+                      {review.ratings.halal ? (
+                        <Check className="w-4 h-4 text-green-600" aria-label="Halal available" />
+                      ) : (
+                        <X className="w-4 h-4 text-red-500" aria-label="Not halal" />
+                      )}
                     </div>
                   </div>
                 </div>
