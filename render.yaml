@@ -9,7 +9,7 @@ services:
     name: nairobi-eats
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build && npm run migrate
+    buildCommand: npm install && npm run migrate && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
