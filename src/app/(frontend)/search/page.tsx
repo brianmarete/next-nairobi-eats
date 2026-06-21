@@ -10,6 +10,8 @@ import { resolveMediaUrl } from '@/lib/media'
 import { MultiAutocompleteInput } from '@/components/search/MultiAutocompleteInput'
 import { getDefaultOgImage } from '@/lib/seo'
 
+export const dynamic = 'force-dynamic'
+
 const PRICE_OPTIONS = [
   { value: 'cheap', label: '$ (Cheap)' },
   { value: 'moderate', label: '$$ (Moderate)' },
@@ -33,28 +35,28 @@ const PAGE_SIZE = 9
 const CANDIDATE_LIMIT = 120
 
 type CategoryDoc = {
-  id: string
+  id: number
   name: string
   slug: string
 }
 
 type ReviewDoc = {
-  id: string
+  id: number
   title: string
   description: string
   slug: string
   coverImage?: unknown
   publishedDate?: string
   location?: {
-    name?: string
+    name?: string | null
   }
   details?: {
-    priceRange?: string
-    tags?: Array<{ tag?: string }>
+    priceRange?: string | null
+    tags?: Array<{ tag?: string | null }> | null
   }
-  category?: Array<{ id?: string; name?: string; slug?: string } | string>
+  category?: Array<{ id?: number; name?: string; slug?: string } | number>
   content?: unknown
-  searchText?: string
+  searchText?: string | null
 }
 
 type SearchPageProps = {
@@ -220,7 +222,7 @@ const scoreReview = (review: ReviewDoc, query: string): number => {
     .map((item) => normalize(item?.tag || ''))
     .filter(Boolean)
   const categoryNames = (review.category || [])
-    .map((item) => (typeof item === 'string' ? '' : normalize(item?.name || '')))
+    .map((item) => (typeof item === 'object' && item ? normalize(item.name || '') : ''))
     .filter(Boolean)
 
   let score = 0
@@ -293,7 +295,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     limit: 100,
   })
 
-  const categories = categoriesData.docs as CategoryDoc[]
+  const categories: CategoryDoc[] = categoriesData.docs
   const selectedCategoryIds = categories
     .filter((item) => selectedCategorySlugs.includes(item.slug))
     .map((item) => item.id)
@@ -425,7 +427,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       : {}),
   })
 
-  const reviews = reviewsData.docs as ReviewDoc[]
+  const reviews: ReviewDoc[] = reviewsData.docs
   const availableTags = Array.from(
     new Set(
       reviews

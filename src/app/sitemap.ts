@@ -3,6 +3,8 @@ import { getPayload } from "payload"
 import config from "@payload-config"
 import { getAbsoluteUrl } from "@/lib/seo"
 
+export const dynamic = "force-dynamic"
+
 type SlugDoc = {
   slug?: string
   updatedAt?: string

@@ -8,6 +8,8 @@ import { resolveMediaUrl } from "@/lib/media"
 import type { Metadata } from "next"
 import { getAbsoluteUrl, getDefaultOgImage } from "@/lib/seo"
 
+export const dynamic = 'force-dynamic'
+
 type Props = {
   params: Promise<{
     slug: string

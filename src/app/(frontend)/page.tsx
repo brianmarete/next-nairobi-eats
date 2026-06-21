@@ -10,6 +10,8 @@ import { Utensils } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/media";
 import { getAbsoluteUrl, getDefaultOgImage, SITE_DESCRIPTION, SITE_NAME } from "@/lib/seo";
 
+export const dynamic = 'force-dynamic'
+
 type HomeReview = {
   title: string
   description: string

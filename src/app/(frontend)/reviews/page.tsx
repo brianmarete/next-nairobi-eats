@@ -7,6 +7,8 @@ import { ReviewGridCard } from "@/components/ReviewGridCard";
 import { resolveMediaUrl } from "@/lib/media";
 import { getAbsoluteUrl, getDefaultOgImage } from "@/lib/seo";
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: "Reviews",
   description: "Browse the latest Nairobi restaurant reviews, ratings, and dining recommendations.",

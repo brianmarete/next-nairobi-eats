@@ -13,6 +13,8 @@ import { InlineGalleryBlock } from "@/components/content/InlineGalleryBlock"
 import type { Metadata } from "next"
 import { getAbsoluteUrl, getDefaultOgImage } from "@/lib/seo"
 
+export const dynamic = 'force-dynamic'
+
 type RichTextNode = {
   type?: string
   tag?: string
@@ -32,10 +34,22 @@ type RichTextNode = {
 }
 
 type ReviewCategory = {
-  id: string
+  id: number
   name: string
   slug: string
 }
+
+const isReviewCategory = (category: unknown): category is ReviewCategory =>
+  Boolean(
+    category &&
+      typeof category === 'object' &&
+      'id' in category &&
+      'name' in category &&
+      'slug' in category,
+  )
+
+const getReviewCategories = (categories: unknown[] | null | undefined): ReviewCategory[] =>
+  (categories ?? []).flatMap((category) => (isReviewCategory(category) ? [category] : []))
 
 type ReviewTag = {
   tag?: string | null
@@ -218,9 +232,12 @@ export default async function ReviewPage({ params }: Props) {
     .slice(0, 4)
     .map(({ candidate }) => candidate)
 
-  const renderStars = (rating: number) => {
-    const fullStars = Math.floor(rating)
-    const hasHalfStar = rating % 1 >= 0.5
+  const reviewCategories = getReviewCategories(review.category)
+
+  const renderStars = (rating: number | null | undefined) => {
+    const normalizedRating = rating ?? 0
+    const fullStars = Math.floor(normalizedRating)
+    const hasHalfStar = normalizedRating % 1 >= 0.5
 
     return (
       <div className="flex">
@@ -245,6 +262,8 @@ export default async function ReviewPage({ params }: Props) {
       </div>
     )
   }
+
+  const formatRating = (rating: number | null | undefined) => rating ?? 'N/A'
 
   const coverImageUrl = resolveMediaUrl(review.coverImage)
   const heroImageUrl = resolveMediaUrl(review.heroImage) || coverImageUrl
@@ -483,21 +502,21 @@ export default async function ReviewPage({ params }: Props) {
                     <span className="text-sm font-medium text-gray-600">Food</span>
                     <div className="flex items-center gap-2">
                       {renderStars(review.ratings.food)}
-                      <span className="text-sm text-gray-400 w-8">{review.ratings.food}</span>
+                      <span className="text-sm text-gray-400 w-8">{formatRating(review.ratings.food)}</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-600">Service</span>
                     <div className="flex items-center gap-2">
                       {renderStars(review.ratings.service)}
-                      <span className="text-sm text-gray-400 w-8">{review.ratings.service}</span>
+                      <span className="text-sm text-gray-400 w-8">{formatRating(review.ratings.service)}</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-600">Ambience</span>
                     <div className="flex items-center gap-2">
                       {renderStars(review.ratings.ambience)}
-                      <span className="text-sm text-gray-400 w-8">{review.ratings.ambience}</span>
+                      <span className="text-sm text-gray-400 w-8">{formatRating(review.ratings.ambience)}</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
@@ -586,13 +605,13 @@ export default async function ReviewPage({ params }: Props) {
                           </div>
                         )}
 
-                        {review.category && review.category.length > 0 && (
+                        {reviewCategories.length > 0 && (
                           <div className="flex items-start gap-3">
                               <Tag className="w-4 h-4 text-gray-400 mt-0.5" />
                               <div>
                                   <span className="block font-medium text-gray-900">Categories</span>
                                   <div className="flex flex-wrap gap-1 mt-1">
-                                      {review.category.map((cat: any) => (
+                                      {reviewCategories.map((cat) => (
                                           <Link href={`/categories/${cat.slug}`} key={cat.id} className="inline-block px-2 py-0.5 bg-gray-100 text-xs text-blue-600 hover:text-blue-800 hover:underline rounded-sm">
                                               {cat.name}
                                           </Link>
@@ -640,6 +659,7 @@ export default async function ReviewPage({ params }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedReviews.map((relatedReview) => {
                 const relatedCoverImageUrl = resolveMediaUrl(relatedReview.coverImage)
+                const relatedCategories = getReviewCategories(relatedReview.category)
                 return (
                   <Link
                     key={relatedReview.id}
@@ -660,9 +680,9 @@ export default async function ReviewPage({ params }: Props) {
                       <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
                         {relatedReview.title}
                       </h3>
-                      {relatedReview.category && relatedReview.category.length > 0 && (
+                      {relatedCategories.length > 0 && (
                         <p className="mt-2 text-xs uppercase tracking-wider text-gray-500">
-                          {(relatedReview.category as ReviewCategory[])
+                          {relatedCategories
                             .map((cat) => cat.name)
                             .filter(Boolean)
                             .slice(0, 2)

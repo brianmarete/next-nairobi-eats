@@ -6,6 +6,8 @@ import { Header } from "@/components/Header"
 import { Footer } from "@/components/Footer"
 import { getAbsoluteUrl, getDefaultOgImage } from "@/lib/seo"
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: "Categories",
   description: "Explore Nairobi Eats categories to find restaurants by cuisine, vibe, and occasion.",
