@@ -26,4 +26,7 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withPayload(nextConfig)
+export default withPayload(nextConfig, {
+  // Bundles db adapters in dev so Turbopack can load @payloadcms/db-postgres
+  devBundleServerPackages: true,
+})

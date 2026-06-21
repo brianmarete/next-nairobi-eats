@@ -1,4 +1,4 @@
-const SITE_NAME = "Nairobi Eats"
+const SITE_NAME = "#NairobiEats"
 const SITE_DESCRIPTION = "Restaurant reviews, food guides, and dining picks from Nairobi and beyond."
 
 const FALLBACK_SITE_URL = "http://localhost:3000"
@@ -7,6 +7,7 @@ export const getSiteUrl = (): string => {
   const configuredUrl =
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.SITE_URL ||
+    (process.env.RENDER_EXTERNAL_URL ? process.env.RENDER_EXTERNAL_URL : "") ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
 
   if (!configuredUrl) return FALLBACK_SITE_URL

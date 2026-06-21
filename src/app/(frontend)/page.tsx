@@ -18,7 +18,7 @@ type HomeReview = {
 }
 
 export const metadata: Metadata = {
-  title: "Home",
+  title: "Nairobi Eats",
   description: SITE_DESCRIPTION,
   alternates: {
     canonical: "/",
@@ -101,13 +101,13 @@ export default async function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }} />
       <Header />
-      
+
       {/* Hero Section */}
       <section className="relative h-[60vh] md:h-[80vh] w-full flex items-center justify-center text-white overflow-hidden">
         {/* Background Image with Overlay */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="https://images.unsplash.com/photo-1626084795995-1262d5b62b08?q=80&w=2072&auto=format&fit=crop"
+            src="/images/Nairobi.webp"
             alt="Nairobi Skyline"
             fill
             priority
@@ -144,7 +144,7 @@ export default async function Home() {
           <h2 className="text-2xl font-bold mb-12 text-gray-900 border-l-4 border-black pl-4">
             Featured Reviews
           </h2>
-          
+
           <div className="flex flex-col">
             {reviews.map((review, index) => (
               <ReviewCard
