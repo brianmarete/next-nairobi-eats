@@ -163,12 +163,12 @@ export default async function CategoryPage({ params }: Props) {
       {/* Reviews Grid */}
       <section className="py-16 px-6 container mx-auto max-w-6xl">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {reviews.docs.map((review: any) => (
+          {reviews.docs.map((review) => (
             <div key={review.id} className="h-full">
                <ReviewGridCard
                 title={review.title}
                 description={review.description}
-                image={resolveMediaUrl(review.coverImage)}
+                image={resolveMediaUrl(review.coverImage, 'card')}
                 slug={review.slug}
               />
             </div>
