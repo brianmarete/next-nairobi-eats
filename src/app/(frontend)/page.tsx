@@ -56,10 +56,10 @@ export default async function Home() {
     depth: 1,
   })
 
-  const reviews = reviewsData.docs.map((review: any) => ({
+  const reviews = reviewsData.docs.map((review) => ({
     title: review.title,
     description: review.description,
-    image: resolveMediaUrl(review.coverImage),
+    image: resolveMediaUrl(review.coverImage, 'card'),
     slug: review.slug
   })) as HomeReview[];
 

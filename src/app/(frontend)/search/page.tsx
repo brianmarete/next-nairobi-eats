@@ -761,7 +761,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {pageResults.map(({ review }) => {
-                    const imageUrl = resolveMediaUrl(review.coverImage as Parameters<typeof resolveMediaUrl>[0])
+                    const imageUrl = resolveMediaUrl(
+                      review.coverImage as Parameters<typeof resolveMediaUrl>[0],
+                      'card',
+                    )
                     const contentText = review.searchText || extractRichTextText(review.content)
                     const contentSnippet = buildSnippet(contentText, queryTokens)
                     const tags = (review.details?.tags || [])

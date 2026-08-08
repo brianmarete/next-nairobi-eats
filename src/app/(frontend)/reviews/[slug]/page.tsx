@@ -88,7 +88,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
   }
 
-  const imageUrl = resolveMediaUrl(review.coverImage) || getDefaultOgImage()
+  const imageUrl = resolveMediaUrl(review.coverImage, 'hero') || getDefaultOgImage()
   const canonicalPath = `/reviews/${review.slug}`
 
   return {
@@ -265,8 +265,8 @@ export default async function ReviewPage({ params }: Props) {
 
   const formatRating = (rating: number | null | undefined) => rating ?? 'N/A'
 
-  const coverImageUrl = resolveMediaUrl(review.coverImage)
-  const heroImageUrl = resolveMediaUrl(review.heroImage) || coverImageUrl
+  const coverImageUrl = resolveMediaUrl(review.coverImage, 'hero')
+  const heroImageUrl = resolveMediaUrl(review.heroImage, 'hero') || coverImageUrl
 
   const mapQuery = review.location?.placeId
     ? `place_id:${review.location.placeId}`
@@ -320,7 +320,7 @@ export default async function ReviewPage({ params }: Props) {
 
       if (node.type === 'upload' && node.relationTo === 'media') {
         const media = getUploadNodeMedia(node)
-        const imageUrl = resolveMediaUrl(media as Parameters<typeof resolveMediaUrl>[0])
+        const imageUrl = resolveMediaUrl(media as Parameters<typeof resolveMediaUrl>[0], 'full')
         if (!imageUrl) return null
 
         return (
@@ -339,7 +339,10 @@ export default async function ReviewPage({ params }: Props) {
       if (node.type === 'block' && node.fields?.blockType === 'contentGallery') {
         const images = (node.fields.images ?? [])
           .map((galleryItem) => {
-            const imageUrl = resolveMediaUrl(galleryItem as Parameters<typeof resolveMediaUrl>[0])
+            const imageUrl = resolveMediaUrl(
+              galleryItem as Parameters<typeof resolveMediaUrl>[0],
+              'gallery',
+            )
             if (!imageUrl) return null
             return {
               url: imageUrl,
@@ -474,10 +477,10 @@ export default async function ReviewPage({ params }: Props) {
             {/* Gallery */}
             {review.gallery && review.gallery.length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mt-8">
-                    {review.gallery.map((item: any, i: number) => (
+                    {review.gallery.map((item, i) => (
                         <div key={i} className="relative aspect-square bg-gray-100 rounded-sm overflow-hidden">
                             {(() => {
-                              const imageUrl = resolveMediaUrl(item.image)
+                              const imageUrl = resolveMediaUrl(item.image, 'gallery')
                               if (!imageUrl) return null
                               return (
                                 <Image
@@ -538,10 +541,10 @@ export default async function ReviewPage({ params }: Props) {
               <div>
                    <h3 className="text-lg font-bold mb-6 uppercase tracking-wider">Menu</h3>
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                       {review.menu.map((item: any, i: number) => (
+                       {review.menu.map((item, i) => (
                            <div key={i} className="relative aspect-[3/4] bg-gray-100 border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
                                {(() => {
-                                 const imageUrl = resolveMediaUrl(item.image)
+                                 const imageUrl = resolveMediaUrl(item.image, 'gallery')
                                  if (!imageUrl) return null
                                  return (
                                    <Image
@@ -595,7 +598,7 @@ export default async function ReviewPage({ params }: Props) {
                               <div>
                                   <span className="block font-medium text-gray-900">Tags</span>
                                   <div className="flex flex-wrap gap-1 mt-1">
-                                      {review.details.tags.map((tagItem: any) => (
+                                      {review.details.tags.map((tagItem: ReviewTag) => (
                                           <span key={tagItem.tag} className="inline-block px-2 py-0.5 bg-gray-100 text-xs text-gray-600 rounded-sm">
                                               {tagItem.tag}
                                           </span>
@@ -658,7 +661,7 @@ export default async function ReviewPage({ params }: Props) {
             <h2 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 mb-6">Related Restaurants</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedReviews.map((relatedReview) => {
-                const relatedCoverImageUrl = resolveMediaUrl(relatedReview.coverImage)
+                const relatedCoverImageUrl = resolveMediaUrl(relatedReview.coverImage, 'thumbnail')
                 const relatedCategories = getReviewCategories(relatedReview.category)
                 return (
                   <Link
